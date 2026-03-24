@@ -1,9 +1,10 @@
 import { Router } from "express";
-import { getDashboardData } from "../controllers/dashboardController.js";
+import { login, me } from "../controllers/authController.js";
 import { authRequired } from "../middleware/auth.js";
 
 const router = Router();
 
-router.get("/", authRequired, getDashboardData);
+router.post("/login", login);
+router.get("/me", authRequired, me);
 
 export default router;

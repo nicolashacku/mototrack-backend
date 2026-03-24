@@ -1,46 +1,71 @@
 import prisma from "../config/prisma.js";
 
-export const getDashboardData = async (_req, res) => {
+const mapPago = (p) => ({
+  id: p.id,
+  fecha: p.fecha,
+  monto: p.monto,
+  semana: p.semana,
+  estado: p.estado.toLowerCase(),
+  comprobante: p.comprobante
+});
+
+const mapRepuesto = (r) => ({
+  id: r.id,
+  fecha: r.fecha,
+  nombre: r.nombre,
+  costo: r.costo,
+  pagadoPor: r.pagadoPor === "DUENO" ? "dueño" : "arrendatario",
+  categoria: r.categoria,
+  imagen: r.imagen
+});
+
+export const getDashboardData = async (req, res) => {
   try {
-    const moto = await prisma.moto.findFirst({
+    const contratoId = req.user.contratoId;
+
+    const contrato = await prisma.contrato.findUnique({
+      where: { id: contratoId },
       include: {
-        contrato: true
+        moto: true,
+        pagos: { orderBy: { fecha: "desc" } },
+        repuestos: { orderBy: { fecha: "desc" } }
       }
     });
 
-    if (!moto || !moto.contrato) {
-      return res.status(404).json({
-        message: "No hay datos iniciales cargados en la base de datos."
-      });
+    if (!contrato) {
+      return res.status(404).json({ message: "Contrato no encontrado" });
     }
 
-    const contrato = await prisma.contrato.findUnique({
-      where: { id: moto.contrato.id }
-    });
-
-    const pagos = await prisma.pago.findMany({
-      where: { contratoId: contrato.id },
+    const mantenimientos = await prisma.maintenanceLog.findMany({
+      where: { motoId: contrato.moto.id },
       orderBy: { fecha: "desc" }
     });
 
-    const repuestos = await prisma.repuesto.findMany({
-      where: { contratoId: contrato.id },
-      orderBy: { fecha: "desc" }
-    });
+    const pagosVerificados = contrato.pagos
+      .filter((p) => p.estado === "VERIFICADO")
+      .reduce((acc, p) => acc + p.monto, 0);
+
+    const diasDesdeInicio = Math.max(
+      0,
+      Math.floor((new Date() - new Date(contrato.fechaInicio)) / 86400000)
+    );
+
+    const totalGenerado = diasDesdeInicio * contrato.cuotaDiaria;
+    const deudaActual = totalGenerado - pagosVerificados;
 
     return res.json({
       moto: {
-        id: moto.id,
-        marca: moto.marca,
-        modelo: moto.modelo,
-        placa: moto.placa,
-        año: moto.anio,
-        kmActual: moto.kmActual,
+        id: contrato.moto.id,
+        marca: contrato.moto.marca,
+        modelo: contrato.moto.modelo,
+        placa: contrato.moto.placa,
+        año: contrato.moto.anio,
+        kmActual: contrato.moto.kmActual,
         ultimoCambioAceite: {
-          km: moto.ultimoCambioAceiteKm,
-          fecha: moto.ultimoCambioAceiteFecha
+          km: contrato.moto.ultimoCambioAceiteKm,
+          fecha: contrato.moto.ultimoCambioAceiteFecha
         },
-        intervaloAceite: moto.intervaloAceite
+        intervaloAceite: contrato.moto.intervaloAceite
       },
       contrato: {
         id: contrato.id,
@@ -49,22 +74,18 @@ export const getDashboardData = async (_req, res) => {
         arrendatario: contrato.arrendatario,
         dueño: contrato.dueno
       },
-      pagos: pagos.map((p) => ({
-        id: p.id,
-        fecha: p.fecha,
-        monto: p.monto,
-        semana: p.semana,
-        estado: p.estado.toLowerCase(),
-        comprobante: p.comprobante
-      })),
-      repuestos: repuestos.map((r) => ({
-        id: r.id,
-        fecha: r.fecha,
-        nombre: r.nombre,
-        costo: r.costo,
-        pagadoPor: r.pagadoPor === "DUENO" ? "dueño" : "arrendatario",
-        categoria: r.categoria
-      }))
+      pagos: contrato.pagos.map(mapPago),
+      repuestos: contrato.repuestos.map(mapRepuesto),
+      mantenimientos,
+      summary: {
+        diasDesdeInicio,
+        totalGenerado,
+        totalPagado: pagosVerificados,
+        deudaActual,
+        totalRepuestos: contrato.repuestos.reduce((acc, r) => acc + r.costo, 0),
+        ultimoPago: contrato.pagos[0] ? mapPago(contrato.pagos[0]) : null,
+        ultimoMantenimiento: mantenimientos[0] || null
+      }
     });
   } catch (error) {
     return res.status(500).json({

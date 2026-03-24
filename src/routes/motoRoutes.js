@@ -1,14 +1,9 @@
 import { Router } from "express";
-import {
-  createMoto,
-  getMoto,
-  updateMoto
-} from "../controllers/motoController.js";
+import { updateKmActual } from "../controllers/motoController.js";
+import { authRequired, requireOwner } from "../middleware/auth.js";
 
 const router = Router();
 
-router.get("/", getMoto);
-router.post("/", createMoto);
-router.put("/:id", updateMoto);
+router.patch("/:id/km", authRequired, requireOwner, updateKmActual);
 
 export default router;

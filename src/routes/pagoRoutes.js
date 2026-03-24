@@ -3,14 +3,18 @@ import {
   createPago,
   deletePago,
   getPagos,
+  updatePago,
   updatePagoEstado
 } from "../controllers/pagoController.js";
+import { authRequired, requireOwner } from "../middleware/auth.js";
+import upload from "../config/upload.js";
 
 const router = Router();
 
-router.get("/", getPagos);
-router.post("/", createPago);
-router.patch("/:id/estado", updatePagoEstado);
-router.delete("/:id", deletePago);
+router.get("/", authRequired, getPagos);
+router.post("/", authRequired, upload.single("comprobante"), createPago);
+router.put("/:id", authRequired, upload.single("comprobante"), updatePago);
+router.patch("/:id/estado", authRequired, requireOwner, updatePagoEstado);
+router.delete("/:id", authRequired, requireOwner, deletePago);
 
 export default router;

@@ -1,12 +1,18 @@
 import prisma from "../config/prisma.js";
 
-export const getPagos = async (_req, res) => {
+export const getPagos = async (req, res) => {
   try {
     const pagos = await prisma.pago.findMany({
+      where: { contratoId: req.user.contratoId },
       orderBy: { fecha: "desc" }
     });
 
-    return res.json(pagos);
+    return res.json(
+      pagos.map((p) => ({
+        ...p,
+        estado: p.estado.toLowerCase()
+      }))
+    );
   } catch (error) {
     return res.status(500).json({
       message: "Error al obtener pagos",
@@ -17,16 +23,16 @@ export const getPagos = async (_req, res) => {
 
 export const createPago = async (req, res) => {
   try {
-    const { fecha, monto, semana, estado, comprobante, contratoId } = req.body;
+    const { fecha, monto, semana } = req.body;
 
     const pago = await prisma.pago.create({
       data: {
         fecha: new Date(fecha),
         monto: Number(monto),
         semana,
-        estado: estado || "PENDIENTE",
-        comprobante,
-        contratoId
+        estado: "PENDIENTE",
+        comprobante: req.file ? `/uploads/${req.file.filename}` : null,
+        contratoId: req.user.contratoId
       }
     });
 
@@ -34,6 +40,30 @@ export const createPago = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "Error al crear pago",
+      error: error.message
+    });
+  }
+};
+
+export const updatePago = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { fecha, monto, semana } = req.body;
+
+    const pago = await prisma.pago.update({
+      where: { id },
+      data: {
+        fecha: new Date(fecha),
+        monto: Number(monto),
+        semana,
+        ...(req.file ? { comprobante: `/uploads/${req.file.filename}` } : {})
+      }
+    });
+
+    return res.json(pago);
+  } catch (error) {
+    return res.status(500).json({
+      message: "Error al editar pago",
       error: error.message
     });
   }

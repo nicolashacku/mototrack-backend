@@ -9,10 +9,10 @@ datasource db {
 }
 
 model Moto {
-  id                      String     @id @default(cuid())
+  id                      String            @id @default(cuid())
   marca                   String
   modelo                  String
-  placa                   String     @unique
+  placa                   String            @unique
   anio                    Int
   kmActual                Int
   ultimoCambioAceiteKm    Int
@@ -20,56 +20,87 @@ model Moto {
   intervaloAceite         Int
 
   contrato                Contrato?
+  mantenimientos          MaintenanceLog[]
 
-  createdAt               DateTime   @default(now())
-  updatedAt               DateTime   @updatedAt
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
 }
 
 model Contrato {
-  id           String     @id @default(cuid())
+  id           String           @id @default(cuid())
   cuotaDiaria  Int
   fechaInicio  DateTime
   arrendatario String
   dueno        String
 
-  motoId       String     @unique
-  moto         Moto       @relation(fields: [motoId], references: [id], onDelete: Cascade)
+  motoId       String           @unique
+  moto         Moto             @relation(fields: [motoId], references: [id], onDelete: Cascade)
 
   pagos        Pago[]
   repuestos    Repuesto[]
+  users        User[]
 
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 }
 
 model Pago {
-  id          String     @id @default(cuid())
+  id          String            @id @default(cuid())
   fecha       DateTime
   monto       Int
   semana      String
-  estado      EstadoPago @default(PENDIENTE)
+  estado      EstadoPago        @default(PENDIENTE)
   comprobante String?
 
   contratoId  String
-  contrato    Contrato   @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  contrato    Contrato          @relation(fields: [contratoId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 }
 
 model Repuesto {
-  id          String    @id @default(cuid())
+  id          String            @id @default(cuid())
   fecha       DateTime
   nombre      String
   costo       Int
   pagadoPor   PagadoPor
   categoria   String
+  imagen      String?
 
   contratoId  String
-  contrato    Contrato  @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  contrato    Contrato          @relation(fields: [contratoId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+model MaintenanceLog {
+  id          String            @id @default(cuid())
+  tipo        MaintenanceType
+  fecha       DateTime
+  km          Int
+  detalle     String?
+  costo       Int?
+
+  motoId      String
+  moto        Moto              @relation(fields: [motoId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+model User {
+  id           String           @id @default(cuid())
+  nombre       String
+  email        String           @unique
+  passwordHash String
+  role         UserRole
+  contratoId   String?
+  contrato     Contrato?        @relation(fields: [contratoId], references: [id], onDelete: SetNull)
+
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 }
 
 enum EstadoPago {
@@ -81,4 +112,14 @@ enum EstadoPago {
 enum PagadoPor {
   DUENO
   ARRENDATARIO
+}
+
+enum MaintenanceType {
+  OIL_CHANGE
+  KM_UPDATE
+}
+
+enum UserRole {
+  OWNER
+  TENANT
 }

@@ -1,8 +1,9 @@
 import prisma from "../config/prisma.js";
 
-export const getRepuestos = async (_req, res) => {
+export const getRepuestos = async (req, res) => {
   try {
     const repuestos = await prisma.repuesto.findMany({
+      where: { contratoId: req.user.contratoId },
       orderBy: { fecha: "desc" }
     });
 
@@ -17,7 +18,7 @@ export const getRepuestos = async (_req, res) => {
 
 export const createRepuesto = async (req, res) => {
   try {
-    const { fecha, nombre, costo, pagadoPor, categoria, contratoId } = req.body;
+    const { fecha, nombre, costo, pagadoPor, categoria } = req.body;
 
     const repuesto = await prisma.repuesto.create({
       data: {
@@ -26,7 +27,8 @@ export const createRepuesto = async (req, res) => {
         costo: Number(costo),
         pagadoPor,
         categoria,
-        contratoId
+        imagen: req.file ? `/uploads/${req.file.filename}` : null,
+        contratoId: req.user.contratoId
       }
     });
 
@@ -34,6 +36,32 @@ export const createRepuesto = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "Error al crear repuesto",
+      error: error.message
+    });
+  }
+};
+
+export const updateRepuesto = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { fecha, nombre, costo, pagadoPor, categoria } = req.body;
+
+    const repuesto = await prisma.repuesto.update({
+      where: { id },
+      data: {
+        fecha: new Date(fecha),
+        nombre,
+        costo: Number(costo),
+        pagadoPor,
+        categoria,
+        ...(req.file ? { imagen: `/uploads/${req.file.filename}` } : {})
+      }
+    });
+
+    return res.json(repuesto);
+  } catch (error) {
+    return res.status(500).json({
+      message: "Error al editar repuesto",
       error: error.message
     });
   }
