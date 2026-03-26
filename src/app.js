@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import path from "path";
-
+import devRoutes from "./routes/devRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import pagoRoutes from "./routes/pagoRoutes.js";
@@ -28,5 +28,5 @@ app.use("/api/pagos", pagoRoutes);
 app.use("/api/repuestos", repuestoRoutes);
 app.use("/api/moto", motoRoutes);
 app.use("/api/mantenimiento", mantenimientoRoutes);
-
+app.use("/api/dev", devRoutes);
 export default app;
